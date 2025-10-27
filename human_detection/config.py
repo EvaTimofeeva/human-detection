@@ -6,15 +6,15 @@ Cбор конфигураций для pipeline.
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from .visualize import VizConfig
-from human_detection.detector import DetectorConfig
+from human_detection.models.detector_conf import DetectorConfig
 
 
 root = Path(__file__).resolve().parents[1]
 input_data_path = root / "input_data" / "crowd.mp4"
 output_data_path = root / "output_data" / "annotated.mp4"
-metrics_dir_path = root / "human_detection" / "metrics"
+metrics_dir_path = root / "metrics"
 
 
 @dataclass  # декоратор из модуля dataclasses, который автоматически создает методы для класса по его аннотациям типов
@@ -30,6 +30,10 @@ class AppConfig:
     fps_override: Optional[float]
     max_frames: Optional[int]
     detector: DetectorConfig
+    compare_models: (
+        bool  # сравнение нескольких моделей: если True — сравним и выберем лучшую
+    )
+    compare_backends: List[str]  # какие бэкенды сравнивать (если compare_models=True)
     viz: VizConfig
 
 
@@ -52,10 +56,18 @@ def parse_args() -> argparse.Namespace:
     )
 
     # добавляем аргументы для детектора
-    p.add_argument("--model", default="yolov8n.pt", help="Весa YOLO (имя или путь).")
+    p.add_argument(
+        "--backend",
+        default="yolov8",
+        choices=["yolov8", "fasterrcnn", "hog", "auto"],
+        help='Выбор бэкенда: "yolov8", "fasterrcnn", "hog", либо "auto" для сравнения.',
+    )
+    p.add_argument("--model", default="yolov8n.pt", help="Весa YOLO.")
     p.add_argument("--conf", type=float, default=0.35, help="Порог уверенности.")
     p.add_argument("--iou", type=float, default=0.45, help="Порог IoU для NMS.")
-    p.add_argument("--imgsz", type=int, default=640, help="Размер входа модели (px).")
+    p.add_argument(
+        "--imgsz", type=int, default=640, help="Размер входа модели (px) для YOLOv8."
+    )
     p.add_argument(
         "--device", default="cpu", help='Устройство: "cpu" или индекс GPU, напр. "0".'
     )
@@ -71,6 +83,20 @@ def parse_args() -> argparse.Namespace:
         nargs="*",
         default=[0],
         help="ID классов (COCO: 0=person).",
+    )
+
+    # Режим сравнения моделей
+    p.add_argument(
+        "--compare",
+        action="store_true",
+        help="Сравним несколько моделей (yolov8, fasterrcnn, hog) и выберем лучшую.",
+    )
+    p.add_argument(
+        "--compare-backends",
+        type=str,
+        nargs="*",
+        default=["yolov8", "fasterrcnn", "hog"],
+        help="Какие бэкенды сравнивать (по умолчанию: yolov8 fasterrcnn hog).",
     )
 
     # добавляем аргументы для визуализации
@@ -97,26 +123,27 @@ def parse_args() -> argparse.Namespace:
 
 def make_configs(ns: argparse.Namespace) -> AppConfig:
     """Создаёт конфигурационные объекты для pipeline"""
-    # оборачиваем в датасеты для удобства
 
+    # оборачиваем в датасеты для удобства
     max_frames = ns.max_frames if ns.max_frames and ns.max_frames > 0 else None
 
     # создаём конфигурацию для детектора
     det_cfg = DetectorConfig(
+        model=ns.model,
         model_path=ns.model,
         conf=ns.conf,
         iou=ns.iou,
         imgsz=ns.imgsz,
         device=ns.device,
         half=(ns.half and not ns.no_half),
-        classes=[0],
+        classes=[0],  # только людей распознаем
     )
 
     # создаём конфигурацию для визуализации
     viz_cfg = VizConfig(
-        box_thickness=2,  # толщина границы прямоугольника в пикселях
-        font_scale=0.5,  # размер шрифта
-        alpha=0.25,  # прозрачность
+        box_thickness=10,  # толщина границы прямоугольника в пикселях
+        font_scale=0.7,  # размер шрифта
+        alpha=0.06,  # прозрачность
         palette_seed=42,  # для палитры цветов
     )
 
@@ -130,5 +157,7 @@ def make_configs(ns: argparse.Namespace) -> AppConfig:
         fps_override=ns.fps_override,
         max_frames=max_frames,
         detector=det_cfg,
+        compare_models=bool(ns.compare or ns.model == "auto"),
+        compare_backends=list(ns.compare_backends),
         viz=viz_cfg,
     )

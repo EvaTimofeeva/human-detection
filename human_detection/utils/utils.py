@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-def ensure_dir(p: Path) -> None:
+def create_dir(p: Path) -> None:
     """создаем папку, если ее нет"""
     p.mkdir(parents=True, exist_ok=True)
 
@@ -22,20 +22,21 @@ class TimeMeter:
 
     alpha: float = 0.9  # Коэффициент сглаживания
     t_ema: Optional[float] = None  # Экспоненциальное скользящее среднее
-    _t0: Optional[float] = None  # Метка времени
+    t_start: Optional[float] = None  # Метка времени
 
     def start(self) -> None:
-        self._t0 = time.perf_counter()
+        """Запоминаем старт времени"""
+        self.t_start = time.perf_counter()
 
     def stop(self) -> float:
         """
         Останавливает отсчет, рассчитывает время, обновляет EMA и возвращает время.
         """
-        if self._t0 is None:  # если start() не вызывался
+        if self.t_start is None:
             return 0.0
 
-        dt = time.perf_counter() - self._t0
-        self._t0 = None
+        dt = time.perf_counter() - self.t_start
+        self.t_start = None
 
         # Обновление EMA
         if self.t_ema is None:

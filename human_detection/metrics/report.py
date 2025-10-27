@@ -1,6 +1,6 @@
 """
 Собираем статистику по кадрам и вносим в CSV/JSON.
-Метрики: количество детекций/людей и средний FPS.
+Метрики: количество детекций/людей и средний FPS, общее время работы.
 """
 
 import csv
@@ -14,7 +14,7 @@ from typing import Dict, List
 @dataclass
 class FrameStats:
     """
-    Класс-контейнер для хранения статистики по одному обработанному кадру
+    Класс для хранения статистики по одному обработанному кадру
     """
 
     frame_idx: int
@@ -35,16 +35,13 @@ class Report:
     )  # момент создания объекта Report, чтобы расчитать общее время работы
 
     def add(self, fs: FrameStats) -> None:
-        """
-        Добавляем статистику в список
-        """
+        """Добавляем статистику в список кадров."""
         self.rows.append(fs)
 
     def summarize(self) -> Dict[str, float]:
         """
         Агрегируем собранные данные и вычисляет сводную статистику.
-
-        :return: Словарь с общими метриками.
+        Возвращает агрегированную сводку по прогону.
         """
 
         total_frames = len(self.rows)
@@ -67,13 +64,13 @@ class Report:
 
     def flush(self, out_dir: Path, stem: str):
         """
-        Сохраняет данные в CSV и сводную статистику в JSON.
+        Сохраняет данные по кадрам (CSV) и сводную статистику (JSON).
 
-        :param out_dir: путь для сохранения отчетов.
-        :param stem: имя файла
-        :return: Кортеж (путь к CSV, путь к JSON).
+        :param out_dir: путь для сохранения отчётов
+        :param stem: базовое имя файла (без расширения)
+        :return: (путь к CSV, путь к JSON)
         """
-        # если нет пути
+        # если нет папки и пути
         out_dir.mkdir(parents=True, exist_ok=True)
         csv_path = out_dir / f"{stem}.csv"
         json_path = out_dir / f"{stem}.json"
@@ -87,7 +84,7 @@ class Report:
                     [r.frame_idx, r.detections, r.persons, f"{r.fps_inst:.3f}"]
                 )  # записываем данных по каждому кадру
 
-        # JSON
+        # JSON со сводкой
         with json_path.open("w", encoding="utf-8") as f:
             json.dump(self.summarize(), f, ensure_ascii=False, indent=2)
 

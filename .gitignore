@@ -1,5 +1,8 @@
 *.mp4
-
+*.pt
+metrics/
+*.csv
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

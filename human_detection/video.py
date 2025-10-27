@@ -1,5 +1,5 @@
 """
-Работа с видео через OpenCV: читаем и записываем видео, с аккуратным выбором кодека
+Работа с видео через OpenCV: читаем и записываем видео
 """
 
 from dataclasses import dataclass
@@ -20,7 +20,7 @@ class VideoSpec:
     fourcc: int  # исходный fourcc видео (может быть 0, если не определён)
 
 
-def _safe_fps(fps: float) -> float:
+def safe_fps(fps: float) -> float:
     """Возвращает валидный FPS (по умолчанию 25.0, если пришёл ноль/NaN)."""
     try:
         if fps and fps > 0:
@@ -37,16 +37,16 @@ def open_reader(path: Path) -> Tuple[cv2.VideoCapture, VideoSpec]:
     :param path: путь к входному видеофайлу
     """
     if not path.is_file():
-        raise FileNotFoundError(f"Не найден входной файл: {path}")
+        raise FileNotFoundError(f"Не нашли входной файл: {path}")
 
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():
-        raise RuntimeError(f"Не удалось открыть видео: {path}")
+        raise RuntimeError(f"Видео не открывается: {path}")
 
     # извлекаем метаданные
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 0
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 0
-    fps = _safe_fps(float(cap.get(cv2.CAP_PROP_FPS)))
+    fps = safe_fps(float(cap.get(cv2.CAP_PROP_FPS)))
     fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))  # может быть 0
 
     # если размер не прочитался — считываем один кадр для инициализации
@@ -93,14 +93,13 @@ def open_writer(
         # Для MP4 не лезем в h264/openh264; берём более совместимый mp4v
         primary_fourcc_str = "mp4v"
     else:
-        # Непривычное расширение — используем то, что попросили как fallback
         primary_fourcc_str = fourcc_fallback
 
     primary_fourcc = cv2.VideoWriter_fourcc(*primary_fourcc_str)
     fps = (
         fps_override
         if (fps_override and fps_override > 0)
-        else _safe_fps(video_spec.fps)
+        else safe_fps(video_spec.fps)
     )
 
     # Первая попытка — выбранный кодек и исходное имя
@@ -117,7 +116,7 @@ def open_writer(
         str(path), fallback_fourcc, fps, (video_spec.width, video_spec.height)
     )
     if writer.isOpened():
-        print(f"[info] Переключился на fourcc={fourcc_fallback} для файла: {path}")
+        print(f"Переключаемся на fourcc={fourcc_fallback} для файла: {path}")
         return writer
 
     # Третья попытка: AVI + MJPG (меняем расширение)
@@ -127,13 +126,10 @@ def open_writer(
         str(alt_path), mjpg, fps, (video_spec.width, video_spec.height)
     )
     if writer.isOpened():
-        print(
-            f"[info] MP4/выбранный кодек не завёлся. Записываю как AVI/MJPG: {alt_path}"
-        )
+        print(f"MP4/выбранный кодек не завёлся. Записываем как AVI/MJPG: {alt_path}")
         return writer
     raise RuntimeError(
-        "Не удалось инициализировать VideoWriter. "
+        "Ошибка создания VideoWriter. "
         f"Пробовал: {path} с fourcc={primary_fourcc_str}, затем fourcc={fourcc_fallback}, "
         f"затем {alt_path} с fourcc=MJPG. "
-        "На Windows для MP4/H.264 требуется openh264 DLL; проще писать AVI/MJPG."
     )

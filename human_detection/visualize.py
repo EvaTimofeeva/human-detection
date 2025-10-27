@@ -11,13 +11,13 @@ import numpy as np
 
 @dataclass
 class VizConfig:
-    box_thickness: int = 10
-    font_scale: float = 0.7
+    box_thickness: int = 5
+    font_scale: float = 0.8
     alpha: float = 0.06
     palette_seed: int = 42
 
 
-def _color_person(seed: int = 42) -> Tuple[int, int, int]:
+def color_person(seed: int = 42) -> Tuple[int, int, int]:
     """
     Возвращает цвет (BGR) для класса 'person'.
     """
@@ -47,10 +47,9 @@ def draw_detections(
     if boxes_xyxy is None or len(boxes_xyxy) == 0:
         return frame
 
-    # Создаем копию кадра, которую будем использовать для отрисовки полупрозрачного фона
-    overlay = frame.copy()
     h, w = frame.shape[:2]
-    color = _color_person(cfg.palette_seed)
+    color = color_person(cfg.palette_seed)
+    label_bg_alpha = float(cfg.alpha)  # используем cfg.alpha как интенсивность подложки
 
     # идем циклом по каждой обнаруженной детекции
     for i in range(len(boxes_xyxy)):
@@ -74,12 +73,16 @@ def draw_detections(
         )
         th_total = th + baseline + 4  # Общая высота подложки текста с отступами
         y_top = max(0, y1 - th_total)  # Верхняя координата подложки
+        x_right = min(w - 1, x1 + tw + 6)
+        y_bottom = min(h - 1, y_top + th_total)
 
         # фон для подписи
-        cv2.rectangle(overlay, (x1, y_top), (x1 + tw + 6, y_top + th_total), color, -1)
-        cv2.addWeighted(
-            overlay, cfg.alpha, frame, 1 - cfg.alpha, 0, frame
-        )  # Используем cfg.alpha для прозрачности
+        if label_bg_alpha > 0:
+            roi = frame[y_top:y_bottom, x1:x_right]
+            if roi.size > 0:
+                tint = np.zeros_like(roi, dtype=roi.dtype)
+                tint[:, :] = color
+                cv2.addWeighted(tint, label_bg_alpha, roi, 1 - label_bg_alpha, 0, roi)
 
         # текст
         cv2.putText(
