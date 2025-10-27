@@ -58,9 +58,9 @@ def parse_args() -> argparse.Namespace:
     # добавляем аргументы для детектора
     p.add_argument(
         "--backend",
-        default="yolov8",
-        choices=["yolov8", "fasterrcnn", "hog", "auto"],
-        help='Выбор бэкенда: "yolov8", "fasterrcnn", "hog", либо "auto" для сравнения.',
+        default="yolov8n.pt",
+        choices=["yolov8n.pt", "fasterrcnn", "hog", "auto"],
+        help='Выбор бэкенда: "yolov8n.pt", "fasterrcnn", "hog", либо "auto" для сравнения.',
     )
     p.add_argument("--model", default="yolov8n.pt", help="Весa YOLO.")
     p.add_argument("--conf", type=float, default=0.35, help="Порог уверенности.")
@@ -95,7 +95,7 @@ def parse_args() -> argparse.Namespace:
         "--compare-backends",
         type=str,
         nargs="*",
-        default=["yolov8", "fasterrcnn", "hog"],
+        default=["yolov8n.pt", "fasterrcnn", "hog"],
         help="Какие бэкенды сравнивать (по умолчанию: yolov8 fasterrcnn hog).",
     )
 

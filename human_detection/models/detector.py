@@ -15,8 +15,8 @@ from human_detection.models.detector_conf import DetectorConfig
 
 def create_detector(cfg: DetectorConfig) -> BaseDetector:
     """Создаем выбранный детектор"""
-    model = (cfg.model or "yolov8").lower()
-    if model == "yolov8":
+    model = (cfg.model or "yolov8n.pt").lower()
+    if model == "yolov8n.pt":
         return PeopleDetectorYOLO(cfg)
     if model == "fasterrcnn":
         return PeopleDetectorFRCNN(cfg)
