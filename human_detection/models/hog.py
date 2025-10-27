@@ -47,7 +47,7 @@ class PeopleDetectorHOG(BaseDetector):
         w_arr = np.array(weights).reshape(-1).astype(np.float32)
         conf_scores = 1 / (1 + np.exp(-w_arr))  # очень приблизительно нормализуем
 
-        # Защита на случай рассинхрона (очень редко, но по аналогии)
+        # Защита на случай рассинхрона
         n = min(len(boxes), len(conf_scores))
         boxes = boxes[:n]
         conf_scores = conf_scores[:n]

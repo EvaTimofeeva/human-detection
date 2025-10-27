@@ -14,11 +14,11 @@ from human_detection.models.detector_conf import DetectorConfig
 # обьявляем класс, в который завернем модельку YOLOv8
 class PeopleDetectorYOLO(BaseDetector):
     def __init__(self, cfg: DetectorConfig) -> None:
-        """Инициализация детектора: загрузка модели и сохранение конфигурации"""
+        """Инициализация детектора: загрузка модели и сохранение"""
         self.cfg = cfg
         self.model = YOLO(cfg.model_path)
 
-        # Стащим имена классов из модели, но оставим интерфейс единым
+        # Берем имена классов из модели, но оставим интерфейс единым
         try:
             self.class_names = self.model.names
         except Exception:
@@ -56,7 +56,7 @@ class PeopleDetectorYOLO(BaseDetector):
 
         cls = result.boxes.cls.detach().cpu().numpy().astype(np.int32)  # class ID
 
-        # --- Защита от рассинхрона длин массивов ---
+        # Защита от рассинхрона длин массивов
         n = min(len(boxes), len(conf_scores), len(cls))
         if n == 0:
             return (
